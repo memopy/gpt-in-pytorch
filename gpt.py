@@ -63,14 +63,16 @@ class AttentionUnit(nn.Module):
 class MultiheadAttention(nn.Module):
     def __init__(self,embedding_dim,n_head,mask=None,batch=False):
         super().__init__()
-        self.heads = nn.ModuleList([AttentionUnit(embedding_dim,mask,batch) for i in range(n_head)])
-        self.downsample = nn.Linear(embedding_dim*n_head,embedding_dim)
-        self.n_head = n_head
-
+        self.chunk_size = embedding_dim//n_head
+        self.n_chunk = embedding_dim//self.chunk_size
+        self.remain = embedding_dim%n_head
+        self.heads = nn.ModuleList([AttentionUnit(self.chunk_size,mask,batch) for i in range(self.n_chunk)])
+        if self.remain:
+            self.heads.append(AttentionUnit(self.remain,mask,batch))
+    
     def forward(self,x):
-        x = [head(x,x,x) for head in self.heads]
+        x = [head(chunk,chunk,chunk) for chunk,head in zip(torch.split(x,self.chunk_size,dim=-1),self.heads)]
         x = torch.cat(x,-1)
-        x = self.downsample(x)
         return x
 
 class MLP(nn.Module):
