@@ -94,10 +94,8 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(embedding_dim)
     
     def forward(self,x):
-        x = self.attention(x)
-        x = self.ln1(x)
-        x = self.mlp(x)
-        x = self.ln2(x)
+        x = x + self.attention(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
         return x
 
 class DecoderOnlyTransformer(nn.Module):
